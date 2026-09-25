@@ -413,8 +413,18 @@ def cmd_doctor(args):
             warnings.append("not inside a git work tree")
         else:
             tracked = run(["git", "ls-files", "output"], cwd=root, capture=True)
-            if tracked.returncode == 0 and tracked.stdout.strip():
-                warnings.append("generated files under output/ are tracked by git")
+            if tracked.returncode == 0:
+                # output/.gitkeep is intentional; anything else is a mistake.
+                offenders = [
+                    line
+                    for line in tracked.stdout.split()
+                    if not line.endswith(".gitkeep")
+                ]
+                if offenders:
+                    warnings.append(
+                        "generated files under output/ are tracked by git: %s"
+                        % ", ".join(offenders[:3])
+                    )
     else:
         warnings.append("git not found on PATH")
 
