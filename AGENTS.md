@@ -150,18 +150,18 @@ logic into a single manuscript.
 1. Never commit `output/`. It is generated and git-ignored; verify with
    `git status --ignored`.
 2. Never commit a Pandoc binary. `paperkit.py setup` handles it.
-2. Never edit `journals/<name>/templates/pandoc-reference.docx` by hand. It is
+3. Never edit `journals/<name>/templates/pandoc-reference.docx` by hand. It is
    derived from `main.docx`; if `main.docx` changes, regenerate the reference
    copy rather than patching styles in it. Verify with
    `python3 paperkit.py validate` afterwards.
-3. Never add manuscript content (prose, bibliography, figures) to `paper-kit`.
-4. Keep exactly one bibliography per manuscript (`references.bib`). Zotero with
+4. Never add manuscript content (prose, bibliography, figures) to `paper-kit`.
+5. Keep exactly one bibliography per manuscript (`references.bib`). Zotero with
    Better BibTeX is the single source of truth; export a per-manuscript subset.
-5. Put figure *generation* code in the analysis repository, not here. Only the
+6. Put figure *generation* code in the analysis repository, not here. Only the
    final rendered figure files belong in `figures/`.
-6. Record the analysis repository URL and the frozen commit SHA in
+7. Record the analysis repository URL and the frozen commit SHA in
    `REPRODUCIBILITY.md`.
-7. Tag submission freezes (`git tag -a v1-<journal>-submission`) and copy the
+8. Tag submission freezes (`git tag -a v1-<journal>-submission`) and copy the
    submitted DOCX into `submissions/<tag>/`; do not rely on `output/`.
 
 ## 9. Cross-platform notes
@@ -194,15 +194,5 @@ table caption, and reference, save `main.docx`, regenerate
 
 ## Manuscript-specific notes
 
-<!-- Add instructions that apply only to this manuscript below this line. -->
-
-- Working title: "Quantifying the decodability of biological structures in
-  single-cell and spatial transcriptomics".
-- Analysis code lives in `/home/chzhang/projects/scit` (not yet pushed to a
-  remote). Record the frozen commit SHA in `REPRODUCIBILITY.md`.
-- The central quantity is ITCA, the information-theoretic co-association score,
-  defined in `manuscript.md` as `I(Y; Z) / H(Y)`. Keep the notation consistent
-  across the main text and the appendix.
-- Figures referenced from `manuscript.md` must exist under `figures/` before
-  `python3 paperkit.py build`; missing images make Pandoc emit a warning but
-  still produce a DOCX.
+<!-- Append instructions that apply only to this manuscript below this line.
+     Upstream never edits this section. -->
