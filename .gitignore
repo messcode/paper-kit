@@ -1,0 +1,16 @@
+# Generated manuscript deliverables
+output/*
+!output/.gitkeep
+
+# Legacy location for a vendored Pandoc. Pandoc is installed per user by
+# `python3 paperkit.py setup`; it must never be committed.
+tools/
+
+# Python bytecode from paperkit.py
+__pycache__/
+*.py[cod]
+
+# OS housekeeping
+.DS_Store
+Thumbs.db
+desktop.ini

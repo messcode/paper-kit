@@ -1,0 +1,16 @@
+# Normalise text to LF inside the repository so that checkouts behave the same
+# on Linux, macOS and Windows.
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF to be parsed reliably by cmd.exe.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets: never apply line-ending conversion or text diffing.
+*.docx binary
+*.doc  binary
+*.png  binary
+*.pdf  binary
+*.jpg  binary
+*.tif  binary
+*.zip  binary
