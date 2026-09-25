@@ -571,30 +571,35 @@ def cmd_new(args):
     return 0
 
 
-def relative_to(root: Path, path: Path) -> str:
-    """Path relative to the repository root, always with forward slashes.
+def arg_path(root: Path, path: Path) -> str:
+    """Path for the pandoc command line, relative to root when possible.
 
     Pandoc records some options (notably `--csl`) in the DOCX metadata, so
-    passing repository-relative paths keeps the output identical across
-    machines and operating systems.
+    repository-relative paths keep the output identical across machines and
+    operating systems. Forward slashes are emitted on every platform.
     """
-    return os.path.relpath(str(path), str(root)).replace(os.sep, "/")
+    path = Path(path)
+    try:
+        relative = path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return str(path)
+    return relative.as_posix()
 
 
 def build_one(root, executable, source, reference, csl, output, metadata, dry_run):
-    command = [executable, relative_to(root, source)]
+    command = [executable, arg_path(root, source)]
     if metadata is not None:
-        command.append("--metadata-file=%s" % relative_to(root, metadata))
+        command.append("--metadata-file=%s" % arg_path(root, metadata))
     command.append("--citeproc")
     if csl is not None:
-        command.append("--csl=%s" % relative_to(root, csl))
+        command.append("--csl=%s" % arg_path(root, csl))
     command += [
         "--resource-path=.",
-        "--reference-doc=%s" % relative_to(root, reference),
-        "--output=%s" % relative_to(root, output),
+        "--reference-doc=%s" % arg_path(root, reference),
+        "--output=%s" % arg_path(root, output),
     ]
 
-    print("  %s -> %s" % (source.name, relative_to(root, output)))
+    print("  %s -> %s" % (source.name, arg_path(root, output)))
     if dry_run:
         print("    %s" % " ".join(str(part) for part in command))
         return True
@@ -678,6 +683,108 @@ def cmd_build(args):
     return 0
 
 
+VALIDATION_MEMBERS = ("word/document.xml", "word/styles.xml", "word/numbering.xml")
+
+
+def docx_member(path: Path, name: str):
+    """Return the bytes of one part inside a DOCX package, or None."""
+    try:
+        with zipfile.ZipFile(str(path)) as archive:
+            try:
+                return archive.read(name)
+            except KeyError:
+                return None
+    except (zipfile.BadZipFile, OSError):
+        return None
+
+
+def cmd_validate(args):
+    """Rebuild validation/*.md and compare against the committed fixtures.
+
+    A fixture `x.docx` is built with the journal reference document; a fixture
+    `x-default.docx` is built with Pandoc's own reference document, which is the
+    baseline showing what the journal template changes.
+    """
+    root = repo_root()
+    vdir = root / "validation"
+    if not vdir.is_dir():
+        raise Failure("no validation directory at %s" % vdir)
+
+    executable, version, origin = resolve_pandoc(args.pandoc, quiet=True)
+    if executable is None:
+        raise Failure("no usable Pandoc found - run: python3 paperkit.py setup")
+
+    _directory, csl, reference, _appendix = journal_assets(root, args.journal)
+    if not reference.is_file():
+        raise Failure("missing Word reference document: %s" % reference)
+    bibliography = vdir / "references.bib"
+
+    sources = sorted(vdir.glob("*.md"))
+    if not sources:
+        raise Failure("no validation/*.md sources found in %s" % vdir)
+
+    print("paperkit validate (pandoc %d.%d from %s)" % (version[0], version[1], origin))
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="paperkit-validate-"))
+    print("  rebuilt copies: %s" % temp_dir)
+
+    stale = []
+    for source in sources:
+        cases = [(vdir / (source.stem + ".docx"), True)]
+        default_fixture = vdir / (source.stem + "-default.docx")
+        if default_fixture.is_file():
+            cases.append((default_fixture, False))
+
+        for fixture, use_reference in cases:
+            built = temp_dir / fixture.name
+            command = [executable, arg_path(root, source), "--citeproc"]
+            if bibliography.is_file():
+                command.append("--bibliography=%s" % arg_path(root, bibliography))
+            if csl.is_file():
+                command.append("--csl=%s" % arg_path(root, csl))
+            if use_reference:
+                command.append("--reference-doc=%s" % arg_path(root, reference))
+            command += ["--resource-path=.", "--output=%s" % built]
+
+            if args.verbose:
+                print("         %s" % " ".join(str(part) for part in command))
+
+            result = run(command, cwd=root, capture=True)
+            if result.returncode != 0 or not built.is_file():
+                failures = (result.stdout or "").strip().splitlines()
+                print("  ERROR  %s" % fixture.name)
+                for line in failures:
+                    print("         %s" % line)
+                stale.append(fixture.name)
+                continue
+
+            if not fixture.is_file():
+                print("  new    %s" % fixture.name)
+                stale.append(fixture.name)
+            else:
+                changed = [
+                    name
+                    for name in VALIDATION_MEMBERS
+                    if docx_member(built, name) != docx_member(fixture, name)
+                ]
+                if not changed:
+                    print("  ok     %s" % fixture.name)
+                    continue
+                print("  DIFF   %s  (%s)" % (fixture.name, ", ".join(changed)))
+                stale.append(fixture.name)
+
+            if args.update:
+                shutil.copyfile(str(built), str(fixture))
+                print("         fixture updated")
+
+    if stale and not args.update:
+        print("")
+        print("  %d fixture(s) differ from a fresh build." % len(stale))
+        print("  Inspect the rebuilt copies above, then either fix the pipeline or")
+        print("  refresh the baseline with: python3 paperkit.py validate --update")
+    return 1 if stale else 0
+
+
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
@@ -703,6 +810,19 @@ def build_parser():
     new.add_argument("--force", action="store_true", help="overwrite existing skeleton files")
     new.add_argument("--kit", help="value recorded as the paperkit version in REPRODUCIBILITY.md")
     new.set_defaults(func=cmd_new)
+
+    validate = subparsers.add_parser(
+        "validate",
+        help="rebuild validation/*.md and compare with the committed fixtures",
+    )
+    validate.add_argument("--pandoc", help="path to a specific Pandoc executable")
+    validate.add_argument(
+        "--update",
+        action="store_true",
+        help="overwrite the fixtures with the freshly built documents",
+    )
+    validate.add_argument("--verbose", action="store_true", help="print the pandoc commands")
+    validate.set_defaults(func=cmd_validate)
 
     build = subparsers.add_parser("build", help="export manuscript.md and appendix.md to DOCX")
     build.add_argument("--pandoc", help="path to a specific Pandoc executable")
