@@ -14,6 +14,9 @@ python3 paperkit.py setup
 # check everything
 python3 paperkit.py doctor
 
+# rebuild the export smoke tests and compare with the committed fixtures
+python3 paperkit.py validate
+
 # export output/manuscript.docx (and output/appendix.docx when configured)
 python3 paperkit.py build
 ```
@@ -76,6 +79,23 @@ Select the journal per build:
 python3 paperkit.py build --journal nature
 JOURNAL=nature ./build_docx.sh
 ```
+
+## Validation
+
+`validation/` holds small Markdown sources with committed DOCX fixtures. They
+capture the export output for a fixed Pandoc version and template, so any change
+to either is visible as a precise part-level diff:
+
+```bash
+python3 paperkit.py validate              # rebuild and compare
+python3 paperkit.py validate --verbose    # also print the pandoc commands
+python3 paperkit.py validate --update     # refresh the fixtures after a deliberate change
+```
+
+Compared parts: `word/document.xml`, `word/styles.xml`, `word/numbering.xml`.
+Package metadata is ignored because it embeds build timestamps. A fixture named
+`x-default.docx` is built with Pandoc's own reference document and acts as the
+baseline showing what the journal template changes.
 
 ## References
 
