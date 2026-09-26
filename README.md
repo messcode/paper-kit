@@ -59,6 +59,8 @@ git fetch kit && git merge kit/main
 ├── manuscript.md, appendix.md    the manuscript
 ├── references.bib                Zotero + Better BibTeX export
 ├── figures/, tables/             assets referenced from the Markdown
+├── materials/                   local PDFs, prior drafts, private notes; git-ignored
+├── notes/                       versioned literature summaries and writing plans
 ├── submissions/                  frozen DOCX snapshots
 └── output/                       generated, git-ignored
 ```
@@ -136,3 +138,50 @@ Pandoc is installed once per user and shared by every manuscript on the machine
 (`~/.cache/paperkit`, `~/Library/Caches/paperkit`, or `%LOCALAPPDATA%\paperkit`),
 verified against a pinned SHA-256. It is deliberately not committed: the
 unpacked binary is 160-230 MB. See `AGENTS.md` for the full resolution order.
+
+## Writing materials and notes
+
+`python3 paperkit.py new` creates these folders for each new manuscript:
+
+```text
+materials/                 # local only; ignored by Git
+  previous-drafts/         # older manuscripts and annotated Word files
+  papers/                  # reference PDFs
+  incoming/                # material awaiting organisation
+  private-notes/           # notes that should not be published
+notes/                     # intended for Git version control
+  literature/              # your literature summaries, named by citation key
+  outline.md               # review question, scope, and argument
+  search-log.md            # databases, dates, queries, and selection criteria
+```
+
+For an existing manuscript, merge the kit update, then run:
+
+```bash
+git fetch kit
+git merge kit/main
+python3 paperkit.py materials
+```
+
+The `materials` command is safe to repeat: it only adds missing directories and
+starter notes, never overwrites manuscript files or existing notes, and requires
+no Pandoc installation. Run it again after cloning a manuscript because ignored
+materials do not travel with Git. `new --force` also preserves existing notes.
+
+Keep your own summaries and evidence synthesis in `notes/` when appropriate for
+sharing with collaborators. Use citation keys and DOI/URL links to identify
+sources; `references.bib` remains the single manuscript bibliography. Put final
+publication figures and tables in `figures/` and `tables/`.
+
+Ignoring files is not a backup: back up `materials/` separately. Ignore rules do
+not remove files already tracked by Git; review `git ls-files materials` before
+adding sensitive sources, and do not force-add this directory.
+
+## Contributing kit improvements
+
+Fix shared build bugs, journal support, and reusable workflow features in a
+branch of `paper-kit`; validate the change and merge it through a pull request.
+An issue is useful for reporting or discussing a problem, but is not required
+before a small fix. Keep manuscript prose and source materials out of the kit.
+Then merge `kit/main` into each manuscript and update its `REPRODUCIBILITY.md`
+kit commit. Do not push a manuscript branch back to the kit.

@@ -4,7 +4,20 @@ This file is the authoritative instruction set for AI agents (and humans) workin
 in any repository that descends from `paper-kit`. Read it fully before acting.
 
 Upstream sections of this file are maintained by `paper-kit`. Manuscript-specific
-instructions go in the `## Manuscript-specific notes` section at the end, which
+instructions go in the `## 12. Writing materials
+
+- `materials/` holds previous drafts, reference PDFs, incoming material, and
+  private notes. It is git-ignored and needs a separate backup. Never force-add
+  it. Ignore rules do not untrack files already committed.
+- `notes/` holds manuscript-owned literature summaries, outlines, and search
+  records intended for version control. Use citation keys to connect notes to
+  the single `references.bib` bibliography.
+- `new` creates both folder structures. Existing manuscripts should run
+  `python3 paperkit.py materials` after merging the kit update. This command
+  preserves existing files and does not require Pandoc.
+- Keep all manuscript-specific source material and notes out of `paper-kit`.
+
+## Manuscript-specific notes` section at the end, which
 upstream never touches.
 
 ---
@@ -51,6 +64,8 @@ manuscript root
 ├── references.bib             Zotero + Better BibTeX export (paper-owned)
 ├── figures/                   final figure files referenced by the Markdown
 ├── tables/                    generated table fragments, if any
+├── materials/                local source material and private notes; git-ignored
+├── notes/                    versioned literature summaries and writing plans
 ├── submissions/               frozen DOCX snapshots, one folder per submission
 └── output/                    generated DOCX; git-ignored, disposable
 ```
@@ -71,6 +86,7 @@ python3 paperkit.py setup       # install the pinned Pandoc 3.10 into the user c
 python3 paperkit.py doctor      # verify environment, journal assets, git hygiene
 python3 paperkit.py validate    # rebuild the smoke tests and compare with the fixtures
 python3 paperkit.py new         # write the manuscript skeleton into a fresh clone
+python3 paperkit.py materials   # add materials/ and notes/ without overwriting files
 python3 paperkit.py build       # export manuscript.md (and appendix.md) to output/
 ```
 
