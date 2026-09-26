@@ -73,6 +73,17 @@ from it. Body text in the template is not merged into the export.
 Add `journals/<name>/templates/appendix-reference.docx` to enable the appendix
 export; `paperkit.py doctor` warns while it is missing.
 
+Pandoc refers to Word styles by *its own* names (`Author`, `FirstParagraph`,
+`Compact`), and Word silently drops a reference the package does not define.
+`journals/add_missing_styles.py` aliases those names onto the template's own
+styles, so e.g. the byline picks up the journal's author formatting:
+
+```bash
+python3 journals/add_missing_styles.py --journal nature --check
+python3 journals/add_missing_styles.py --journal nature
+python3 paperkit.py validate --update
+```
+
 Select the journal per build:
 
 ```bash

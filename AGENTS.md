@@ -39,6 +39,7 @@ manuscript root
 ├── .gitignore                 (kit-managed)
 ├── metadata.yaml              journal-agnostic Pandoc metadata (paper-owned)
 ├── journals/<name>/           journal asset set (kit-managed)
+│   ├── add_missing_styles.py  aliases Pandoc style names onto template styles
 │   ├── <name>.csl             CSL citation style
 │   └── templates/
 │       ├── main.docx               the publisher's Word template
@@ -84,6 +85,7 @@ python3 paperkit.py build --no-appendix       # skip appendix.md
 python3 paperkit.py build --pandoc /path/to/pandoc
 python3 paperkit.py validate --update         # refresh the smoke-test baseline
 python3 paperkit.py doctor                    # run this first when anything fails
+python3 journals/add_missing_styles.py --journal nature --check
 ```
 
 `build_docx.sh` / `build_docx.cmd` are conveniences that forward to
@@ -184,11 +186,34 @@ logic into a single manuscript.
 
 ## 10. Style-specific setup
 
-Pandoc reuses a Word style only if that style already exists in the reference
-document. If a manuscript needs a style that is missing from the journal
-template, apply it once in Word to a sample heading, paragraph, figure caption,
-table caption, and reference, save `main.docx`, regenerate
-`pandoc-reference.docx`, and re-run `validation/`.
+Pandoc emits `w:pStyle` values that are *style names from its own default
+reference document* (`Title`, `Author`, `FirstParagraph`, `Compact`, ...). Word
+silently ignores a reference to a style the package does not define and falls
+back to the default paragraph style. A publisher template is unlikely to use
+Pandoc's names, so byline, author-affiliation or table-cell paragraphs can lose
+their formatting without any error being raised.
+
+Fix that with the alias table rather than by hand-editing the DOCX:
+
+```bash
+python3 journals/add_missing_styles.py --journal nature --check   # report only
+python3 journals/add_missing_styles.py --journal nature           # add aliases
+python3 paperkit.py validate --update                             # new baseline
+```
+
+The script only *adds* styles that are missing and rewrites nothing else in the
+package, so existing template tuning is preserved. Extend `ALIASES` in that
+script when a manuscript needs another Pandoc-internal style. `paperkit.py
+doctor` runs the `--check` form automatically.
+
+If a manuscript needs a style that exists under a different name, the
+`::: {custom-style="Template Style Name"}` div is the direct way to apply it:
+
+```markdown
+::: {custom-style="Author-Affiliation"}
+Alice First, Bob Second
+:::
+```
 
 ## 11. Markdown gotchas
 

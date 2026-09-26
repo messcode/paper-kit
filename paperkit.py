@@ -407,6 +407,28 @@ def cmd_doctor(args):
             "legacy vendored Pandoc found at %s - remove it, it must not be tracked by git" % legacy
         )
 
+    # Pandoc emits style names such as `Author`; if the reference document does
+    # not define them, Word silently falls back to Normal.
+    style_checker = root / "journals" / "add_missing_styles.py"
+    if style_checker.is_file() and reference.is_file():
+        result = run(
+            [sys.executable, str(style_checker), "--journal", args.journal, "--check"],
+            cwd=root,
+            capture=True,
+        )
+        if result.returncode == 1:
+            warnings.append(
+                "%s does not define every style Pandoc emits; run: "
+                "python3 journals/add_missing_styles.py --journal %s"
+                % (reference.name, args.journal)
+            )
+        elif result.returncode not in (0, 1):
+            warnings.append(
+                "style check failed: %s" % (result.stdout or "").strip().splitlines()[0]
+                if (result.stdout or "").strip()
+                else "style check failed"
+            )
+
     if shutil.which("git"):
         inside = run(["git", "rev-parse", "--is-inside-work-tree"], cwd=root, capture=True)
         if inside.returncode != 0:
@@ -799,7 +821,8 @@ def cmd_validate(args):
         print("  %d fixture(s) differ from a fresh build." % len(stale))
         print("  Inspect the rebuilt copies above, then either fix the pipeline or")
         print("  refresh the baseline with: python3 paperkit.py validate --update")
-    return 1 if stale else 0
+        return 1
+    return 0
 
 
 # --------------------------------------------------------------------------
