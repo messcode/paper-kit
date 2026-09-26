@@ -457,7 +457,9 @@ Write the introduction here.
 
 ### Result heading
 
-Write the result here. Inline math uses `$I(Y; Z)$`.
+Write the result here. Inline math is written $I(Y; Z)$ with single dollar
+signs; wrapping it in backticks would turn it into a code span instead of a
+formula. Display math uses double dollar signs:
 
 $$
 \\mathrm{ITCA} = \\frac{I(Y; Z)}{H(Y)}.
@@ -523,7 +525,10 @@ SKELETON_REPRODUCIBILITY = """# Reproducibility Record
 - paperkit: {kit}
 - Pandoc: {pandoc}
 
-## Code Snapshot
+## Code Snapshot (optional)
+
+Fill this in only when the manuscript depends on an analysis repository. Delete
+the section entirely if it does not.
 
 - Code repository:
 - Remote URL:
@@ -533,7 +538,9 @@ SKELETON_REPRODUCIBILITY = """# Reproducibility Record
 ## Analysis Record
 
 Record the exact analysis entry point, configuration file, input data release,
-and any random seeds for each figure or submission revision here.
+and any random seeds for each figure or submission revision here. If figures are
+produced by an analysis repository, record the entry point and commit SHA that
+generated each one.
 """
 
 

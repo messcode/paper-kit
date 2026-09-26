@@ -158,9 +158,11 @@ logic into a single manuscript.
 5. Keep exactly one bibliography per manuscript (`references.bib`). Zotero with
    Better BibTeX is the single source of truth; export a per-manuscript subset.
 6. Put figure *generation* code in the analysis repository, not here. Only the
-   final rendered figure files belong in `figures/`.
-7. Record the analysis repository URL and the frozen commit SHA in
-   `REPRODUCIBILITY.md`.
+   final rendered figure files belong in `figures/`. The analysis repository is
+   optional: plenty of manuscripts have no code behind them.
+7. If the manuscript does depend on an analysis repository, record its URL and
+   the frozen commit SHA in the *optional* Code Snapshot section of
+   `REPRODUCIBILITY.md`. Never require a specific local path there.
 8. Tag submission freezes (`git tag -a v1-<journal>-submission`) and copy the
    submitted DOCX into `submissions/<tag>/`; do not rely on `output/`.
 
@@ -188,9 +190,18 @@ template, apply it once in Word to a sample heading, paragraph, figure caption,
 table caption, and reference, save `main.docx`, regenerate
 `pandoc-reference.docx`, and re-run `validation/`.
 
-## Manuscript-specific notes
+## 11. Markdown gotchas
 
-<!-- Add instructions that apply only to this manuscript below this line. -->
+- Inline math is `$I(Y; Z)$`. Wrapping it in backticks (`` `$I(Y; Z)$` ``) makes
+  it a code span, and it will appear literally in the DOCX instead of becoming a
+  Word equation. This is the most common reason “the formula did not convert”.
+- `# X` maps to Word `Heading 1`, `## X` to `Heading 2`, `### X` to
+  `Heading 3`. Journal templates style those three levels very differently, so
+  keep the heading depth of the manuscript stable when comparing revisions.
+- A style that the journal template does not define (commonly `Author`,
+  `FirstParagraph` and `Compact`) still appears in the exported DOCX but Word
+  falls back to `Normal`. `python3 paperkit.py doctor` does not flag this;
+  check it with `python3 paperkit.py validate` or by inspecting `styles.xml`.
 
 ## Manuscript-specific notes
 
