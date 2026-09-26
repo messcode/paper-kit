@@ -566,6 +566,41 @@ generated each one.
 """
 
 
+def init_materials(root: Path):
+    """Create local materials and versioned notes without replacing any content."""
+    created = []
+    for name in ("previous-drafts", "papers", "incoming", "private-notes"):
+        directory = root / "materials" / name
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            created.append("materials/%s/" % name)
+    files = {
+        "notes/literature/.gitkeep": "",
+        "notes/outline.md": "# Writing outline\n\nRecord the review question, scope, and argument here.\n",
+        "notes/search-log.md": (
+            "# Literature search log\n\n"
+            "Record databases, search dates, exact queries, and selection criteria.\n"
+        ),
+    }
+    for name, content in sorted(files.items()):
+        path = root / name
+        if not path.exists():
+            write_text(path, content)
+            created.append(name)
+    return created
+
+
+def cmd_materials(args):
+    root = repo_root()
+    created = init_materials(root)
+    print("Initialised writing materials in %s" % root)
+    for name in created:
+        print("  + %s" % name)
+    print("  materials/ is git-ignored; back it up separately.")
+    print("  notes/ is intended for version control; existing files are preserved.")
+    return 0
+
+
 def cmd_new(args):
     root = repo_root()
     if (root / "manuscript.md").exists() and not args.force:
@@ -598,6 +633,8 @@ def cmd_new(args):
         if not keep.exists():
             write_text(keep, "")
             created.append("%s/.gitkeep" % directory)
+
+    created.extend(init_materials(root))
 
     print("Initialised manuscript skeleton in %s" % root)
     for name in created:
@@ -850,6 +887,11 @@ def build_parser():
     new.add_argument("--force", action="store_true", help="overwrite existing skeleton files")
     new.add_argument("--kit", help="value recorded as the paperkit version in REPRODUCIBILITY.md")
     new.set_defaults(func=cmd_new)
+
+    materials = subparsers.add_parser(
+        "materials", help="add local materials and versioned notes without overwriting files"
+    )
+    materials.set_defaults(func=cmd_materials)
 
     validate = subparsers.add_parser(
         "validate",
