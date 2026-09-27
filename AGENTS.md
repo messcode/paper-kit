@@ -4,20 +4,7 @@ This file is the authoritative instruction set for AI agents (and humans) workin
 in any repository that descends from `paper-kit`. Read it fully before acting.
 
 Upstream sections of this file are maintained by `paper-kit`. Manuscript-specific
-instructions go in the `## 12. Writing materials
-
-- `materials/` holds previous drafts, reference PDFs, incoming material, and
-  private notes. It is git-ignored and needs a separate backup. Never force-add
-  it. Ignore rules do not untrack files already committed.
-- `notes/` holds manuscript-owned literature summaries, outlines, and search
-  records intended for version control. Use citation keys to connect notes to
-  the single `references.bib` bibliography.
-- `new` creates both folder structures. Existing manuscripts should run
-  `python3 paperkit.py materials` after merging the kit update. This command
-  preserves existing files and does not require Pandoc.
-- Keep all manuscript-specific source material and notes out of `paper-kit`.
-
-## Manuscript-specific notes` section at the end, which
+instructions go in the `## Manuscript-specific notes` section at the end, which
 upstream never touches.
 
 ---
@@ -243,6 +230,39 @@ Alice First, Bob Second
   `FirstParagraph` and `Compact`) still appears in the exported DOCX but Word
   falls back to `Normal`. `python3 paperkit.py doctor` does not flag this;
   check it with `python3 paperkit.py validate` or by inspecting `styles.xml`.
+
+## 12. Writing materials
+
+- `materials/` holds previous drafts, reference PDFs, incoming material, and
+  private notes. It is git-ignored and needs a separate backup. Never force-add
+  it. Ignore rules do not untrack files already committed.
+- `notes/` holds manuscript-owned literature summaries, outlines, and search
+  records intended for version control. Use citation keys to connect notes to
+  the single `references.bib` bibliography.
+- `new` creates both folder structures. Existing manuscripts should run
+  `python3 paperkit.py materials` after merging the kit update. This command
+  preserves existing files and does not require Pandoc.
+- Keep all manuscript-specific source material and notes out of `paper-kit`.
+
+
+## 13. Journal profiles and annotated references
+
+- Shared CSL files live under `styles/`; journal `profile.json` files select
+  repository-relative CSL/filter paths and isolated validation folders.
+- Manuscript-owned `paperkit.json` sets the default journal; `--journal` and
+  `JOURNAL` can override it. Nature remains the fallback for existing projects.
+- COSB uses the shared Elsevier Vancouver style and Pandoc's generic single-column
+  reference DOCX, not an official publisher template. Do not claim full submission
+  compliance merely because the export succeeded.
+- Manuscript-owned `reference-annotations.json` holds actual citation-key-based
+  stars, plain-text annotations, confirmed dates, and the review period. Never
+  place a manuscript's annotations or bibliography in this shared kit.
+- COSB annotations are inserted after citeproc and only in the bibliography.
+  Validate dates and flag insufficient/unused annotations; never invent content.
+- When changing citation logic, run `python3 -m unittest discover -s tests -v`,
+  `python3 paperkit.py validate --journal cosb`, and the Nature validation suite.
+  Inspect intentional output changes before updating fixtures.
+- Follow each manuscript's invitation where it conflicts with general guidance.
 
 ## Manuscript-specific notes
 

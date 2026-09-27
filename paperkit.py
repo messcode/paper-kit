@@ -15,6 +15,8 @@ Tested on Linux, macOS and Windows with Python 3.8+.
 from __future__ import annotations
 
 import argparse
+import json
+from datetime import date
 import hashlib
 import os
 import shutil
@@ -355,9 +357,87 @@ def journal_dir(root: Path, name: str) -> Path:
     return root / "journals" / name
 
 
+def read_json(path: Path):
+    try:
+        value = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as error:
+        raise Failure("cannot read %s: %s" % (path, error))
+    if not isinstance(value, dict):
+        raise Failure("%s must contain a JSON object" % path)
+    return value
+
+
+def journal_profile(root: Path, name: str):
+    if not isinstance(name, str) or not name or Path(name).name != name or "\\" in name or name in (".", ".."):
+        raise Failure("invalid journal name: %s" % name)
+    path = journal_dir(root, name) / "profile.json"
+    return read_json(path) if path.is_file() else {}
+
+
+def kit_path(root: Path, value: str):
+    if not isinstance(value, str) or not value:
+        raise Failure("profile paths must be non-empty strings")
+    path = (root / value).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError:
+        raise Failure("profile path must stay inside the repository: %s" % value)
+    return path
+
+
+def annotations_options(root: Path, path: Path):
+    data = read_json(path)
+    entries = data.get("reference-annotations", {})
+    if not isinstance(entries, dict):
+        raise Failure("reference-annotations must be an object keyed by citation key")
+    if entries:
+        try:
+            start = date.fromisoformat(data["review-period-start"])
+            end = date.fromisoformat(data["review-period-end"])
+            if start > end:
+                raise ValueError("review period is reversed")
+            # A calendar two-year window, with Feb 29 handled explicitly.
+            try:
+                earliest = end.replace(year=end.year - 2)
+            except ValueError:
+                earliest = date(end.year - 2, 2, 28)
+            if start < earliest:
+                raise ValueError("review period exceeds two years")
+            for key, entry in entries.items():
+                if not isinstance(entry, dict) or entry.get("interest") not in ("*", "**"):
+                    raise ValueError("%s: interest must be * or **" % key)
+                if not isinstance(entry.get("text"), str) or not entry["text"].strip():
+                    raise ValueError("%s: annotation text is required" % key)
+                published = date.fromisoformat(entry["published"])
+                if not start <= published <= end:
+                    raise ValueError("%s: publication date is outside review period" % key)
+        except (KeyError, TypeError, ValueError) as error:
+            raise Failure("invalid annotations in %s: %s" % (path, error))
+    return ["--metadata-file=%s" % arg_path(root, path)]
+
+
+def journal_options(root: Path, name: str, annotation_path=None):
+    profile = journal_profile(root, name)
+    options = []
+    if profile.get("annotations"):
+        path = annotation_path or root / "reference-annotations.json"
+        if path.is_file():
+            options.extend(annotations_options(root, path))
+    filters = profile.get("filters", [])
+    if not isinstance(filters, list):
+        raise Failure("profile filters must be a list")
+    for value in filters:
+        path = kit_path(root, value)
+        if not path.is_file():
+            raise Failure("missing journal filter: %s" % path)
+        options.append("--lua-filter=%s" % arg_path(root, path))
+    return options
+
+
 def journal_assets(root: Path, name: str):
     directory = journal_dir(root, name)
-    csl = directory / ("%s.csl" % name)
+    profile = journal_profile(root, name)
+    csl = kit_path(root, profile["csl"]) if "csl" in profile else directory / ("%s.csl" % name)
     reference = directory / "templates" / "pandoc-reference.docx"
     appendix_reference = directory / "templates" / "appendix-reference.docx"
     return directory, csl, reference, appendix_reference
@@ -370,6 +450,8 @@ def cmd_doctor(args):
 
     print("paperkit doctor")
     print("  repository   %s" % root)
+    print("  journal      %s" % args.journal)
+    journal_options(root, args.journal)
     print("  python       %s" % sys.version.split()[0])
     print("  platform     %s/%s" % (platform_family(), normalise_arch()))
 
@@ -662,11 +744,12 @@ def arg_path(root: Path, path: Path) -> str:
     return relative.as_posix()
 
 
-def build_one(root, executable, source, reference, csl, output, metadata, dry_run):
+def build_one(root, executable, source, reference, csl, output, metadata, dry_run, extra_options=()):
     command = [executable, arg_path(root, source)]
     if metadata is not None:
         command.append("--metadata-file=%s" % arg_path(root, metadata))
     command.append("--citeproc")
+    command.extend(extra_options)
     if csl is not None:
         command.append("--csl=%s" % arg_path(root, csl))
     command += [
@@ -734,6 +817,7 @@ def cmd_build(args):
             root / "output" / (source.stem + ".docx"),
             metadata,
             args.dry_run,
+            journal_options(root, args.journal),
         )
 
     if args.no_appendix:
@@ -755,6 +839,7 @@ def cmd_build(args):
         root / "output" / "appendix.docx",
         metadata,
         args.dry_run,
+        journal_options(root, args.journal),
     )
     return 0
 
@@ -782,7 +867,8 @@ def cmd_validate(args):
     baseline showing what the journal template changes.
     """
     root = repo_root()
-    vdir = root / "validation"
+    profile = journal_profile(root, args.journal)
+    vdir = kit_path(root, profile.get("validation", "validation"))
     if not vdir.is_dir():
         raise Failure("no validation directory at %s" % vdir)
 
@@ -814,6 +900,7 @@ def cmd_validate(args):
         for fixture, use_reference in cases:
             built = temp_dir / fixture.name
             command = [executable, arg_path(root, source), "--citeproc"]
+            command.extend(journal_options(root, args.journal, vdir / "reference-annotations.json"))
             if bibliography.is_file():
                 command.append("--bibliography=%s" % arg_path(root, bibliography))
             if csl.is_file():
@@ -872,7 +959,7 @@ def build_parser():
         prog="paperkit",
         description="Cross-platform manuscript build helper (Markdown + Pandoc -> DOCX).",
     )
-    parser.add_argument("--journal", default="nature", help="journal asset set under journals/ (default: nature)")
+    parser.add_argument("--journal", help="journal profile (default: paperkit.json, then nature)")
     subparsers = parser.add_subparsers(dest="command")
 
     setup = subparsers.add_parser("setup", help="install the pinned Pandoc into the user cache")
@@ -912,6 +999,9 @@ def build_parser():
     build.add_argument("--dry-run", action="store_true", help="print the pandoc command without running it")
     build.set_defaults(func=cmd_build)
 
+    for subparser in (doctor, new, validate, build):
+        subparser.add_argument("--journal", default=argparse.SUPPRESS, help="override journal profile")
+
     return parser
 
 
@@ -922,6 +1012,10 @@ def main(argv=None):
         parser.print_help()
         return 1
     try:
+        config_path = repo_root() / "paperkit.json"
+        config = read_json(config_path) if config_path.is_file() else {}
+        args.journal = args.journal or os.environ.get("JOURNAL") or config.get("journal", "nature")
+        journal_profile(repo_root(), args.journal)
         return args.func(args)
     except Failure as error:
         print("error: %s" % error, file=sys.stderr)
