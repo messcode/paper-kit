@@ -185,3 +185,26 @@ An issue is useful for reporting or discussing a problem, but is not required
 before a small fix. Keep manuscript prose and source materials out of the kit.
 Then merge `kit/main` into each manuscript and update its `REPRODUCIBILITY.md`
 kit commit. Do not push a manuscript branch back to the kit.
+
+## Shared citation styles and COSB
+
+The COSB profile reuses the established Elsevier Vancouver CSL in `styles/`;
+it does not duplicate that style under the journal directory. See
+[journals/cosb/README.md](journals/cosb/README.md) for the manuscript-owned
+`paperkit.json` selection and `reference-annotations.json` format. It supplies
+bracketed body citations and bibliography-only interest stars and descriptions.
+The COSB Word reference is Pandoc's generic single-column template, not an
+official publisher template.
+
+```bash
+python3 paperkit.py build --journal cosb --no-appendix
+python3 paperkit.py doctor --journal cosb
+python3 paperkit.py validate --journal cosb
+python3 paperkit.py validate --journal nature
+python3 -m unittest discover -s tests -v
+```
+
+CLI journal selection works before or after the subcommand. Resolution is
+`--journal`, then the `JOURNAL` environment variable, then `paperkit.json`, then
+Nature. Both build wrappers use that same resolution. A manuscript can select
+COSB without changing kit-owned source code.

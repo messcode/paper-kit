@@ -1,0 +1,6 @@
+{
+  "csl": "styles/elsevier-vancouver.csl",
+  "filters": ["filters/cosb-references.lua"],
+  "annotations": true,
+  "validation": "validation/cosb"
+}

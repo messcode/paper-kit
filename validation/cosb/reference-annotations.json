@@ -1,0 +1,8 @@
+{
+  "review-period-start": "2024-09-27",
+  "review-period-end": "2026-09-27",
+  "reference-annotations": {
+    "seven": {"interest": "*", "published": "2025-02-01", "text": "Synthetic annotation of special interest; not a scientific claim."},
+    "six": {"interest": "**", "published": "2026-02-01", "text": "Synthetic annotation of outstanding interest; not a scientific claim."}
+  }
+}

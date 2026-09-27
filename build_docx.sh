@@ -9,4 +9,4 @@ elif command -v python3 >/dev/null 2>&1; then
 else
     PY=python
 fi
-exec "$PY" "$HERE/paperkit.py" --journal "${JOURNAL:-nature}" build "$@"
+exec "$PY" "$HERE/paperkit.py" build "$@"
