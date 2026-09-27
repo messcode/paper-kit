@@ -264,6 +264,17 @@ Alice First, Bob Second
   Inspect intentional output changes before updating fixtures.
 - Follow each manuscript's invitation where it conflicts with general guidance.
 
+## 14. Word-count checks
+
+- `python3 paperkit.py wordcount` parses the source with Pandoc, before citeproc.
+- Keep invitation-specific `word_limit` in manuscript-owned `paperkit.json`.
+- Exclude only documented categories; table/box prose and section headings
+  count conservatively. Mark standalone legends with `wordcount="figure-legends"`
+  Divs and use standard headings as documented in README.md.
+- Report warnings and draft placeholders alongside totals; a passing count is
+  not submission approval. Do not silently discard unrecognized body sections.
+- Run the word-count integration tests when changing traversal or tokenization.
+
 ## Manuscript-specific notes
 
 <!-- Append instructions that apply only to this manuscript below this line.

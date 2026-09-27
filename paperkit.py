@@ -19,6 +19,7 @@ import json
 from datetime import date
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -844,6 +845,149 @@ def cmd_build(args):
     return 0
 
 
+
+# Word counts use the source AST, without citeproc or generated bibliography.
+WORD_PATTERN = re.compile(r"[^\W_]+(?:[’'\-‐‑][^\W_]+)*", re.UNICODE)
+
+
+def count_manuscript(ast):
+    counts = dict.fromkeys(("body", "abstract", "figure-legends", "references", "front-matter"), 0)
+    warnings = set()
+    sections = {"abstract": "abstract", "references": "references",
+                "references and recommended reading": "references",
+                "figure legends": "figure-legends", "figure captions": "figure-legends",
+                "keywords": "front-matter"}
+
+    def words(text, bucket):
+        counts[bucket] += len(WORD_PATTERN.findall(text))
+        if "TODO" in text:
+            warnings.add("TODO placeholders are included; this is not a finished manuscript.")
+        if re.search(r"[\u3400-\u9fff]", text):
+            warnings.add("CJK text found; this tokenizer is intended for English prose.")
+
+    def title(node):
+        if isinstance(node, list):
+            return "".join(title(x) for x in node)
+        if isinstance(node, dict):
+            if node.get("t") == "Str":
+                return node["c"]
+            if node.get("t") in ("Space", "SoftBreak", "LineBreak"):
+                return " "
+            return title(node.get("c", []))
+        return ""
+
+    def walk(node, bucket):
+        if isinstance(node, list):
+            for child in node:
+                walk(child, bucket)
+            return
+        if not isinstance(node, dict):
+            return
+        kind, c = node.get("t"), node.get("c")
+        if kind == "Str":
+            words(c, bucket)
+        elif kind in ("Code", "CodeBlock"):
+            words(c[-1], bucket)
+            warnings.add("Code is counted as text; review its treatment if present in the submission.")
+        elif kind == "Math":
+            counts[bucket] += 1
+            warnings.add("Each math expression counts as one word; publisher/Word counts may differ.")
+        elif kind in ("RawInline", "RawBlock"):
+            if not (c[0] == "html" and re.fullmatch(r"\s*<!--.*?-->\s*", c[1], re.S)):
+                warnings.add("Raw markup is not counted; review visible content before relying on the total.")
+        elif kind == "Cite":
+            for citation in c[0]:
+                walk(citation.get("citationPrefix", []), bucket)
+                walk(citation.get("citationSuffix", []), bucket)
+        elif kind == "Image":
+            # Figure captions are handled by Figure; an inline image has alt text only.
+            warnings.add("Image alt text is excluded; put visible legends in a Figure or marked legend block.")
+        elif kind == "Figure":
+            walk(c[1][1], "figure-legends")  # long caption, not duplicate short caption
+        elif kind == "Div":
+            attr, blocks = c
+            attributes = dict(attr[2])
+            category = attributes.get("wordcount")
+            if category is not None and category not in counts:
+                raise Failure("unknown wordcount category: %s" % category)
+            walk_blocks(blocks, category or ("references" if attr[0] == "refs" else bucket))
+        elif kind == "Table":
+            # Caption's short form repeats its long form. Cells remain counted.
+            walk(c[1][1], bucket)
+            walk(c[3:], bucket)
+            warnings.add("Table captions/cells and box text are included unless explicitly classified.")
+        elif kind in ("Link", "Span", "Header"):
+            walk(c[1] if kind == "Link" else c[-1], bucket)
+        else:
+            walk(c, bucket)
+
+    def walk_blocks(blocks, bucket):
+        current, excluded_level = bucket, None
+        for block in blocks:
+            if block.get("t") == "Header":
+                level, _, inlines = block["c"]
+                name = title(inlines).strip().lower()
+                if excluded_level is not None and level <= excluded_level:
+                    current, excluded_level = bucket, None
+                if name in sections:
+                    current, excluded_level = sections[name], level
+                    continue  # structural labels are not words
+            walk(block, current)
+
+    for key in ("title", "subtitle", "author", "date", "keywords"):
+        walk(ast.get("meta", {}).get(key, []), "front-matter")
+    walk(ast.get("meta", {}).get("abstract", []), "abstract")
+    walk_blocks(ast["blocks"], "body")
+    return counts, sorted(warnings)
+
+
+def cmd_wordcount(args):
+    root = repo_root()
+    source = root / args.source
+    if not source.is_file():
+        raise Failure("missing manuscript source: %s" % source)
+    config = read_json(root / "paperkit.json") if (root / "paperkit.json").is_file() else {}
+    limit = args.limit if args.limit is not None else config.get("word_limit")
+    if limit is not None and (type(limit) is not int or limit <= 0):
+        raise Failure("word_limit / --limit must be a positive integer")
+    executable, _, _ = resolve_pandoc(args.pandoc, quiet=True)
+    if executable is None:
+        raise Failure("no usable Pandoc found - run: python3 paperkit.py setup")
+    command = [executable, str(source), "--from=markdown", "--to=json"]
+    if (root / "metadata.yaml").is_file():
+        command.append("--metadata-file=" + str(root / "metadata.yaml"))
+    result = subprocess.run(command, cwd=str(root), stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, encoding="utf-8")
+    if result.returncode:
+        raise Failure("Pandoc could not parse manuscript: " + result.stderr.strip())
+    counts, warnings = count_manuscript(json.loads(result.stdout))
+    if result.stderr.strip():
+        warnings.append(result.stderr.strip())
+    over = limit is not None and counts["body"] > limit
+    report = {"source": arg_path(root, source), "counts": counts, "limit": limit,
+              "remaining": None if limit is None else limit - counts["body"],
+              "status": "over-limit" if over else ("within-limit" if limit else "no-limit"),
+              "warnings": warnings,
+              "bibliography_note": "Source text only; generated bibliography and external annotations are excluded."}
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print("paperkit wordcount: %s" % report["source"])
+        print("  body: %d words (includes section headings, tables and boxes)" % counts["body"])
+        for category, count in counts.items():
+            if category != "body":
+                print("  excluded %-16s %d" % (category + ":", count))
+        print("  " + report["bibliography_note"])
+        if limit:
+            print("  %s: limit %d; %d words %s" % (report["status"], limit,
+                  abs(report["remaining"]), "over" if over else "remaining"))
+        else:
+            print("  no limit configured; set paperkit.json word_limit or --limit")
+        for warning in warnings:
+            print("  review: " + warning)
+    return 1 if over else 0
+
+
 VALIDATION_MEMBERS = ("word/document.xml", "word/styles.xml", "word/numbering.xml")
 
 
@@ -999,7 +1143,14 @@ def build_parser():
     build.add_argument("--dry-run", action="store_true", help="print the pandoc command without running it")
     build.set_defaults(func=cmd_build)
 
-    for subparser in (doctor, new, validate, build):
+    wordcount = subparsers.add_parser("wordcount", help="count body words separately from excluded material")
+    wordcount.add_argument("--source", default="manuscript.md", help="Markdown source (default: manuscript.md)")
+    wordcount.add_argument("--limit", type=int, help="override manuscript-owned word_limit")
+    wordcount.add_argument("--pandoc", help="path to Pandoc")
+    wordcount.add_argument("--json", action="store_true", help="print machine-readable report")
+    wordcount.set_defaults(func=cmd_wordcount)
+
+    for subparser in (doctor, new, validate, build, wordcount):
         subparser.add_argument("--journal", default=argparse.SUPPRESS, help="override journal profile")
 
     return parser

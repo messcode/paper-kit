@@ -208,3 +208,46 @@ CLI journal selection works before or after the subcommand. Resolution is
 `--journal`, then the `JOURNAL` environment variable, then `paperkit.json`, then
 Nature. Both build wrappers use that same resolution. A manuscript can select
 COSB without changing kit-owned source code.
+
+## Body word count
+
+```sh
+python3 paperkit.py wordcount
+python3 paperkit.py wordcount --limit 2000 --json
+```
+
+Set `"word_limit": 2000` in manuscript-owned `paperkit.json` when the invitation
+requires it. No journal-wide limit is assumed. `--limit` overrides that value;
+`--source` selects another Markdown file. Exit status is 0 within the limit
+(or without a configured limit), 1 over it, and 2 for invalid input.
+
+Counting uses Pandoc's Markdown AST before citeproc. Body section headings,
+table captions/cells, box text, and footnotes count conservatively. YAML title,
+author/date/keywords, abstract, reference sections (including annotations), and
+figure captions are excluded. Generated bibliography and external annotation
+files are never counted or loaded, so the reference subtotal measures only
+reference prose present in the source. Appendix files are not read implicitly.
+
+Recognized section headings are `Abstract`, `References`, `References and
+recommended reading`, `Figure legends`, `Figure captions`, and `Keywords`
+(case insensitive). An excluded section ends at the next same/higher-level
+heading. Use consistent heading levels; arbitrary headings are body text.
+Standalone Pandoc figures supply their caption automatically. For separate
+legends or nonstandard section labels, classify a fenced Div explicitly:
+
+```markdown
+::: {wordcount="figure-legends"}
+Figure 1. The figure legend goes here.
+:::
+```
+
+Other categories are `abstract`, `references`, `front-matter`, and `body`.
+Only use exclusions justified by the invitation. Plain paragraphs labelled
+“Figure 1” are not guessed to be captions; mark them explicitly. Use Pandoc
+citations (`[@Key]`): citation identifiers/numbers are excluded while citation
+prefix/suffix prose counts. Manually typed `[1]` cannot be distinguished from
+ordinary numbers and counts. Numbers and hyphenated/contraction words each
+count as one; math expressions count as one with a review warning. Raw markup
+(except comments), code, image alt text, TODOs and CJK prose trigger review
+warnings where relevant. This is an English prose estimate, not a claim to
+reproduce Microsoft Word or an unspecified publisher tokenizer exactly.
