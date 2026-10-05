@@ -444,6 +444,23 @@ def journal_assets(root: Path, name: str):
     return directory, csl, reference, appendix_reference
 
 
+def export_assets(root: Path, args):
+    """Resolve main-document styling independently of the journal's citations."""
+    directory, csl, reference, appendix_reference = journal_assets(root, args.journal)
+    for option in ("csl", "reference_doc"):
+        value = getattr(args, option, None)
+        if value is None:
+            continue
+        path = kit_path(root, value)
+        if not path.is_file():
+            raise Failure("missing configured %s: %s" % (option, path))
+        if option == "csl":
+            csl = path
+        else:
+            reference = path
+    return directory, csl, reference, appendix_reference
+
+
 def cmd_doctor(args):
     root = repo_root()
     problems = []
@@ -465,7 +482,9 @@ def cmd_doctor(args):
     else:
         print("  pandoc       %d.%d  [%s]  %s" % (version[0], version[1], origin, executable))
 
-    directory, csl, reference, appendix_reference = journal_assets(root, args.journal)
+    directory, csl, reference, appendix_reference = export_assets(root, args)
+    print("  reference    %s" % arg_path(root, reference))
+    print("  csl          %s" % arg_path(root, csl))
     if not directory.is_dir():
         problems.append("journal directory missing: %s" % directory)
     if not csl.is_file():
@@ -495,7 +514,8 @@ def cmd_doctor(args):
     style_checker = root / "journals" / "add_missing_styles.py"
     if style_checker.is_file() and reference.is_file():
         result = run(
-            [sys.executable, str(style_checker), "--journal", args.journal, "--check"],
+            [sys.executable, str(style_checker), "--journal", args.journal,
+             "--reference", str(reference), "--check"],
             cwd=root,
             capture=True,
         )
@@ -781,7 +801,7 @@ def cmd_build(args):
             "  or install Pandoc yourself and put it on PATH"
         )
 
-    directory, csl, reference, appendix_reference = journal_assets(root, args.journal)
+    directory, csl, reference, appendix_reference = export_assets(root, args)
     if not csl.is_file():
         print("  note: no CSL style at %s, using the Pandoc default" % csl)
         csl = None
@@ -1143,6 +1163,14 @@ def build_parser():
     build.add_argument("--dry-run", action="store_true", help="print the pandoc command without running it")
     build.set_defaults(func=cmd_build)
 
+    for subparser in (doctor, build):
+        subparser.add_argument(
+            "--reference-doc", help="main Word template path inside the repository (overrides paperkit.json)",
+        )
+        subparser.add_argument(
+            "--csl", help="citation style path inside the repository (overrides paperkit.json)",
+        )
+
     wordcount = subparsers.add_parser("wordcount", help="count body words separately from excluded material")
     wordcount.add_argument("--source", default="manuscript.md", help="Markdown source (default: manuscript.md)")
     wordcount.add_argument("--limit", type=int, help="override manuscript-owned word_limit")
@@ -1166,6 +1194,10 @@ def main(argv=None):
         config_path = repo_root() / "paperkit.json"
         config = read_json(config_path) if config_path.is_file() else {}
         args.journal = args.journal or os.environ.get("JOURNAL") or config.get("journal", "nature")
+        if args.command in ("doctor", "build"):
+            for option in ("reference_doc", "csl"):
+                if getattr(args, option, None) is None:
+                    setattr(args, option, config.get(option))
         journal_profile(repo_root(), args.journal)
         return args.func(args)
     except Failure as error:

@@ -93,6 +93,38 @@ python3 paperkit.py build --journal nature
 JOURNAL=nature ./build_docx.sh
 ```
 
+### Choose Word layout and citation style independently
+
+The optional shared layout at `templates/manuscript/pandoc-reference.docx` uses
+Arial body text, black section headings, A4 pages and continuous line numbers.
+It is a manuscript drafting layout, not an official journal submission template.
+See `templates/manuscript/README.md` for its source and regeneration instructions.
+
+Select it in manuscript-owned `paperkit.json` without changing the journal:
+
+```json
+{
+  "journal": "cosb",
+  "reference_doc": "templates/manuscript/pandoc-reference.docx",
+  "csl": "styles/elsevier-vancouver.csl"
+}
+```
+
+Each override is optional. With neither set, journal defaults are unchanged.
+`reference_doc` controls the main DOCX layout; `csl` controls in-text citations and
+bibliography formatting. Both paths must stay inside the repository. They do not
+change journal filters, annotations or the optional appendix template.
+CLI options override the corresponding configuration values:
+
+```sh
+python3 paperkit.py build --reference-doc templates/manuscript/pandoc-reference.docx
+python3 paperkit.py build --csl journals/nature/nature.csl
+python3 paperkit.py doctor
+```
+
+`doctor` reports and checks the selected assets. `validate` continues to test each
+journal's default fixtures, independently of these manuscript-level overrides.
+
 ## Validation
 
 `validation/` holds small Markdown sources with committed DOCX fixtures. They
