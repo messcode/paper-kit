@@ -46,6 +46,32 @@ remote, and `kit` stays around so later improvements can be merged in:
 git fetch kit && git merge kit/main
 ```
 
+### Start a standalone LaTeX supplement
+
+The [Nature-style supplementary information template](journals/nature/templates/appendix.tex)
+builds a standalone PDF. From the root of a new manuscript cloned from
+`paper-kit`, copy the template once to create your manuscript-owned appendix.
+
+```bash
+cp journals/nature/templates/appendix.tex appendix.tex
+```
+
+In PowerShell, use `Copy-Item journals/nature/templates/appendix.tex appendix.tex`.
+Edit the root-level copy to fill in the manuscript title, authors and affiliations.
+Uncomment the note, figure, table and bibliography examples as needed.
+
+Use a TeX installation with XeLaTeX, `latexmk` and the packages listed in the
+template preamble. XeLaTeX must be able to find **TeX Gyre Heros** for body
+text and **TeX Gyre Termes Math** for mathematics. The blank template can be
+compiled before adding any figures or bibliography. From the manuscript root, run
+
+```bash
+latexmk -xelatex appendix.tex
+```
+
+This writes `appendix.pdf` beside the source. After editing, rerun the same
+command. `latexmk` takes care of the extra passes for the lists and cross-references.
+
 ## Repository layout
 
 ```
