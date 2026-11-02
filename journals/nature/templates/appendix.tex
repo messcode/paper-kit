@@ -1,0 +1,244 @@
+% !TeX program = xelatex
+% ======================================================================
+%  Supplementary Information template (Nature-portfolio style)
+%  Copy this file into your manuscript and run latexmk -xelatex appendix.tex.
+%
+%  Front matter: Table of Contents with three sub-lists
+%    - Supplementary Notes
+%    - Figures
+%    - Tables
+%  Body: numbered Supplementary Notes, Figures, Tables, References.
+% ======================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ----------------------------------------------------------------------
+% Page geometry and fonts
+% ----------------------------------------------------------------------
+\usepackage[a4paper,margin=25.4mm]{geometry}
+\usepackage{fontspec}
+% TeX Gyre Heros is a Helvetica clone: neutral sans-serif in the spirit of
+% Nature's Arial/Helvetica typography. Mathematics uses TeX Gyre Termes Math,
+% a dedicated OpenType math font, so symbols, spacing and operators are
+% designed consistently rather than synthesized from the text font.
+\setmainfont{TeX Gyre Heros}[Ligatures=TeX,Scale=0.95]
+\usepackage{unicode-math}
+\setmathfont{TeX Gyre Termes Math}
+
+% ----------------------------------------------------------------------
+% Packages
+% ----------------------------------------------------------------------
+\usepackage{booktabs,longtable,graphicx,array}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{tocloft}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[dvipsnames,table]{xcolor}
+\usepackage[hidelinks,pdfusetitle]{hyperref}
+
+% ----------------------------------------------------------------------
+% Colours (Nature-style accent for headings and links)
+% ----------------------------------------------------------------------
+\definecolor{sinavymaroon}{RGB}{136,31,52}   % deep maroon accent
+\definecolor{sigrey}{RGB}{88,88,88}          % muted grey for captions
+
+% ----------------------------------------------------------------------
+% Typography
+% ----------------------------------------------------------------------
+\setstretch{1.08}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.4\baselineskip}
+\setlength{\emergencystretch}{2em}
+
+% Section headings: small, bold, accent-coloured, Nature-like.
+\titleformat{\section}
+  {\bfseries\large\color{sinavymaroon}}{\thesection}{0.5em}{}
+\titleformat{\subsection}
+  {\bfseries\normalsize\color{sinavymaroon}}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.4em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.0em}{0.4em}
+
+% Captions: small, bold label, grey body text.
+\captionsetup{
+  font={small},
+  labelfont={bf},
+  labelsep=period,
+  skip=6pt
+}
+\renewcommand{\figurename}{Figure}
+\renewcommand{\tablename}{Table}
+
+% Bold manuscript-facing figure and table references.
+\newcommand{\figref}[1]{\textbf{Fig.~\ref{#1}}}
+\newcommand{\figsref}[2]{\textbf{Figs.~\ref{#1} and~\ref{#2}}}
+\newcommand{\mainfig}[1]{\textbf{main text Fig.~#1}}
+\newcommand{\suppfigref}[1]{\textbf{Fig.~\ref{#1}}}
+\newcommand{\suppfigsref}[2]{\textbf{Figs.~\ref{#1} and~\ref{#2}}}
+\newcommand{\tabref}[1]{\textbf{Table~\ref{#1}}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ----------------------------------------------------------------------
+% Table of Contents design
+% One "Table of Contents" heading, followed by three sub-lists:
+%   Supplementary Notes / Figures / Tables
+% (tocloft supplies the \newlistof machinery; the main \tableofcontents
+%  heading is suppressed so the lists appear under a single title.)
+% ----------------------------------------------------------------------
+\renewcommand{\contentsname}{Table of Contents}
+\renewcommand{\listfigurename}{Supplementary Figures}
+\renewcommand{\listtablename}{Supplementary Tables}
+\renewcommand{\tablename}{Supplementary Table}
+\newlistof{suppnote}{lon}{Supplementary Notes}
+
+% Print stored list files directly, without the built-in \listof... headings;
+% we typeset our own sub-headings (\tocsubhead) inside the Table of Contents.
+\makeatletter
+\newcommand{\printtocfile}[1]{\@starttoc{#1}}
+\makeatother
+
+% Sub-heading style inside the Table of Contents.
+\newcommand{\tocsubhead}[1]{%
+  \par\bigskip
+  {\normalsize\bfseries\color{sinavymaroon}#1\par}%
+  \vspace{2pt}
+}
+
+% TOC entries: compact, dotted leaders, hanging "Figure 1."-style numbers.
+\setlength{\cftbeforesecskip}{3pt}
+\setlength{\cftbeforesubsecskip}{1pt}
+\setlength{\cftfigindent}{0pt}
+\setlength{\cfttabindent}{0pt}
+\setlength{\cftsuppnoteindent}{0pt}
+\renewcommand{\cftdotsep}{1.5}
+\renewcommand{\cftfigpresnum}{Figure~}
+\renewcommand{\cftfigaftersnum}{.}
+\renewcommand{\cfttabpresnum}{Table~}
+\renewcommand{\cfttabaftersnum}{.}
+\renewcommand{\cftsuppnotepresnum}{Supplementary Note~}
+\renewcommand{\cftsuppnoteaftersnum}{:\space}
+\renewcommand{\cftfigfont}{\normalfont}
+\renewcommand{\cftfigpagefont}{\normalfont}
+\renewcommand{\cfttabfont}{\normalfont}
+\renewcommand{\cfttabpagefont}{\normalfont}
+\renewcommand{\cftsuppnotefont}{\normalfont}
+\renewcommand{\cftsuppnotepagefont}{\normalfont}
+\renewcommand{\cftfigpresnum}{\bfseries Figure~}
+\renewcommand{\cftfigaftersnum}{.\normalfont}
+\renewcommand{\cfttabpresnum}{\bfseries Table~}
+\renewcommand{\cfttabaftersnum}{.\normalfont}
+\renewcommand{\cftsuppnotepresnum}{\bfseries Supplementary Note~}
+\renewcommand{\cftsuppnoteaftersnum}{:\normalfont\space}
+\setlength{\cftfignumwidth}{6.3em}
+\setlength{\cfttabnumwidth}{5.5em}
+\setlength{\cftsuppnotenumwidth}{11.8em}
+
+% ----------------------------------------------------------------------
+% Semantic helpers for manuscript mathematics: vectors/multivariate
+% quantities are bold, scalar variables remain regular italic symbols.
+% ----------------------------------------------------------------------
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\matr}[1]{\mathbf{#1}}
+
+% Theorem-like environments for Notes (amsthm, italic body).
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+% ----------------------------------------------------------------------
+% Supplementary Note command
+%   \suppnote{Title}{Body}
+% Produces an unnumbered section "Supplementary Note N: Title" and adds it
+% to the Notes sub-list of the Table of Contents.
+% ----------------------------------------------------------------------
+\newcounter{suppnotenumber}
+\newcommand{\suppnote}[2]{%
+  \refstepcounter{suppnotenumber}%
+  \section*{Supplementary Note \thesuppnotenumber: #1}%
+  \addcontentsline{lon}{suppnote}{\protect\numberline{\thesuppnotenumber}#1}%
+  #2%
+}
+
+% ======================================================================
+\begin{document}
+
+% ----------------------------------------------------------------------
+% Title page
+% ----------------------------------------------------------------------
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{center}
+\vspace*{18mm}
+{\normalsize\bfseries SUPPLEMENTARY INFORMATION\par}
+\vspace{4mm}
+{\color{sinavymaroon}\rule{0.35\textwidth}{0.8pt}\par}
+\vspace{14mm}
+{\Large\bfseries
+\begin{minipage}{0.84\textwidth}
+\centering
+Manuscript title
+\end{minipage}\par}
+\vspace{14mm}
+{\normalsize Author names\par}
+\vspace{3mm}
+{\small Affiliations and correspondence\par}
+\end{center}
+\end{titlepage}
+
+% ----------------------------------------------------------------------
+% Table of Contents: single heading, three sub-lists
+% ----------------------------------------------------------------------
+\setcounter{page}{2}
+\clearpage
+\phantomsection
+{\Large\bfseries\color{sinavymaroon}\contentsname\par}
+\bigskip
+
+\tocsubhead{Supplementary Notes}
+\printtocfile{lon}
+
+\tocsubhead{\listfigurename}
+\printtocfile{lof}
+
+\tocsubhead{\listtablename}
+\printtocfile{lot}
+
+% Uncomment each section when adding its first item.
+% \clearpage
+% \section*{Supplementary Notes}
+% \suppnote{Note title}{Note text.}
+
+% \clearpage
+% \section*{Supplementary Figures}
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.85\textwidth]{figures/example.pdf}
+%   \caption[Short title]{Full figure caption.}
+%   \label{fig:example}
+% \end{figure}
+
+% \clearpage
+% \section*{Supplementary Tables}
+% \begin{table}[htbp]
+%   \centering
+%   \caption[Short title]{Full table caption.}
+%   \label{tab:example}
+%   \begin{tabular}{ll}
+%     \toprule
+%     Column A & Column B \\
+%     \midrule
+%     Value A & Value B \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
+
+% Cite entries with \cite{your-key} and use your manuscript bibliography.
+% \clearpage
+% \renewcommand{\refname}{Supplementary References}
+% \bibliographystyle{unsrt}
+% \bibliography{references}
+
+\end{document}
