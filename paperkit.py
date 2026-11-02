@@ -713,6 +713,19 @@ def cmd_new(args):
         )
 
     created = []
+    appendix = root / "appendix.tex"
+    if args.latex_appendix and not os.path.lexists(appendix):
+        template = root / "journals/nature/templates/appendix.tex"
+        try:
+            content = template.read_bytes()
+            with appendix.open("xb") as output:
+                output.write(content)
+            created.append(appendix.name)
+        except FileExistsError:
+            pass  # Another process created the appendix first.
+        except OSError as error:
+            raise Failure("could not create LaTeX appendix: %s" % error) from error
+
     files = {
         "manuscript.md": SKELETON_MANUSCRIPT,
         "appendix.md": SKELETON_APPENDIX,
@@ -1137,6 +1150,8 @@ def build_parser():
     new = subparsers.add_parser("new", help="create the manuscript skeleton in this repository")
     new.add_argument("--force", action="store_true", help="overwrite existing skeleton files")
     new.add_argument("--kit", help="value recorded as the paperkit version in REPRODUCIBILITY.md")
+    new.add_argument("--latex-appendix", action="store_true",
+                     help="copy the Nature-style appendix.tex template if absent, even with --force")
     new.set_defaults(func=cmd_new)
 
     materials = subparsers.add_parser(

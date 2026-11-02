@@ -49,15 +49,17 @@ git fetch kit && git merge kit/main
 ### Start a standalone LaTeX supplement
 
 The [Nature-style supplementary information template](journals/nature/templates/appendix.tex)
-builds a standalone PDF. From the root of a new manuscript cloned from
-`paper-kit`, copy the template once to create your manuscript-owned appendix.
+builds a standalone PDF. To include it when initializing a new manuscript,
+run this from the root of the new clone:
 
 ```bash
-cp journals/nature/templates/appendix.tex appendix.tex
+python3 paperkit.py new --latex-appendix
 ```
 
-In PowerShell, use `Copy-Item journals/nature/templates/appendix.tex appendix.tex`.
-Edit the root-level copy to fill in the manuscript title, authors and affiliations.
+This copies the template to `appendix.tex` at the manuscript root. An existing
+`appendix.tex` is preserved even with `--force`. Without `--latex-appendix`,
+`new` skips the LaTeX template. Edit the root-level copy to fill in the
+manuscript title, authors and affiliations.
 Uncomment the note, figure, table and bibliography examples as needed.
 
 Use a TeX installation with XeLaTeX, `latexmk` and the packages listed in the
